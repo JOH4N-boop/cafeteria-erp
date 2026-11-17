@@ -1,17 +1,14 @@
 import { ERPLayout } from "@/components/erp/erp-layout"
 import { InventarioContent } from "@/components/erp/inventario-content"
-import { getDb } from "@/lib/db"
 import { requireRole } from "@/lib/auth"
+import { contarAlertas } from "@/lib/api"
 
 export default async function InventarioPage() {
   const session = await requireRole("admin")
-  const db = getDb()
-  const alertasStock = db.prepare(`
-    SELECT COUNT(*) as c FROM ingredientes WHERE activo=1 AND stock_actual <= stock_minimo
-  `).get() as { c: number }
+  const alertas = await contarAlertas()
 
   return (
-    <ERPLayout alertasCount={alertasStock.c} userName={session.nombre}>
+    <ERPLayout alertasCount={alertas} userName={session.nombre}>
       <InventarioContent />
     </ERPLayout>
   )

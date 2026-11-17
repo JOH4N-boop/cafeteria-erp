@@ -1,43 +1,35 @@
 import { ERPLayout } from "@/components/erp/erp-layout"
-import { getDb } from "@/lib/db"
 import { requireRole } from "@/lib/auth"
+import { apiGet, contarAlertas } from "@/lib/api"
 import { Badge } from "@/components/ui/badge"
 
 function formatCOP(value: number) {
   return new Intl.NumberFormat("es-CO", { style: "currency", currency: "COP", maximumFractionDigits: 0 }).format(value)
 }
 
+type ProductoRow = {
+  id: number
+  nombre: string
+  descripcion: string | null
+  precio_venta: number
+  costo_receta: number
+  categoria_nombre: string
+  receta_id: number | null
+  disponible: number
+}
+
 export default async function ProductosPage() {
   const session = await requireRole("admin")
-  const db = getDb()
 
-  const alertasStock = db.prepare(`
-    SELECT COUNT(*) as c FROM ingredientes WHERE activo=1 AND stock_actual <= stock_minimo
-  `).get() as { c: number }
-
-  const productos = db.prepare(`
-    SELECT p.*, c.nombre as categoria_nombre,
-           r.id as receta_id
-    FROM productos p
-    LEFT JOIN categorias c ON p.categoria_id = c.id
-    LEFT JOIN recetas r ON r.producto_id = p.id
-    WHERE p.activo = 1
-    ORDER BY c.nombre, p.nombre
-  `).all() as Array<{
-    id: number
-    nombre: string
-    descripcion: string | null
-    precio_venta: number
-    costo_receta: number
-    categoria_nombre: string
-    receta_id: number | null
-    disponible: number
-  }>
+  const [alertas, productos] = await Promise.all([
+    contarAlertas(),
+    apiGet<ProductoRow[]>("/api/productos?full=1"),
+  ])
 
   const categorias = [...new Set(productos.map((p) => p.categoria_nombre))]
 
   return (
-    <ERPLayout alertasCount={alertasStock.c} userName={session.nombre}>
+    <ERPLayout alertasCount={alertas} userName={session.nombre}>
       <div className="p-4 lg:p-6 space-y-5">
         <div>
           <h1 className="text-xl font-bold text-foreground">Productos</h1>

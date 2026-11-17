@@ -15,7 +15,16 @@ const nextConfig = {
   images: {
     unoptimized: true,
   },
-  serverExternalPackages: ["better-sqlite3"],
+  // El backend ahora es un servicio Rust (Axum + SQLite). Todas las rutas /api/*
+  // se redirigen (proxy) a ese backend. Configurable con BACKEND_URL.
+  rewrites: async () => ({
+    beforeFiles: [
+      {
+        source: "/api/:path*",
+        destination: `${process.env.BACKEND_URL || "http://127.0.0.1:8080"}/api/:path*`,
+      },
+    ],
+  }),
   headers: async () => [
     {
       source: "/(.*)",
